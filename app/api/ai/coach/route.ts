@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { messages = [], context } = body as {
       messages: Array<{ role: 'user' | 'assistant'; content: string }>
-      context: StudentContext
+      context?: StudentContext
     }
 
     const ai = getAIService()

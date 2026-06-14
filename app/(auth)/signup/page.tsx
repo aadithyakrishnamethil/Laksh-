@@ -33,6 +33,7 @@ export default function SignupPage() {
         },
       })
       if (error) throw error
+      router.refresh()
       router.push('/onboarding')
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Signup failed')

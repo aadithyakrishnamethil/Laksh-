@@ -4,18 +4,25 @@ import type { Profile } from '@/types'
 
 export default async function StudentLayout({ children }: { children: React.ReactNode }) {
   let profile: Profile | null = null
+  let unreadCount = 0
 
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
     if (user) {
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-      profile = data
+      const [profileRes, notifRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
+        supabase
+          .from('notifications')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('read', false),
+      ])
+      profile = profileRes.data
+      unreadCount = notifRes.count ?? 0
     }
   } catch {
     // Supabase not configured — use mock profile for dev
@@ -32,5 +39,9 @@ export default async function StudentLayout({ children }: { children: React.Reac
     }
   }
 
-  return <AppShell profile={profile}>{children}</AppShell>
+  return (
+    <AppShell profile={profile} unreadNotifications={unreadCount}>
+      {children}
+    </AppShell>
+  )
 }

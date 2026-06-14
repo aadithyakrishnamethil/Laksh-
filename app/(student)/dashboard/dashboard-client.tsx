@@ -13,20 +13,12 @@ import { Badge } from '@/components/ui/badge'
 import { ProgressRing } from '@/components/ui/progress-ring'
 import { ScoreLineChart } from '@/components/charts/score-line-chart'
 import { SubjectRadar } from '@/components/charts/subject-radar'
-import {
-  SEED_STUDENT,
-  SEED_GOAL,
-  SEED_STREAK,
-  SEED_XP,
-  SEED_LEVEL,
-  SEED_WEEKLY_CHART,
-  SEED_SUBJECT_STATS,
-  SEED_RECENT_ACTIVITY,
-  SEED_PLAN_TASKS,
-  SEED_PREDICTIONS,
-  SEED_BURNOUT,
-} from '@/lib/db/seed-data'
+import type { DashboardData } from '@/lib/db/queries'
 import { format } from 'date-fns'
+
+interface DashboardClientProps {
+  data: DashboardData
+}
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -36,15 +28,22 @@ const fadeUp = {
 
 const stagger = { animate: { transition: { staggerChildren: 0.06 } } }
 
-export function DashboardClient() {
+export function DashboardClient({ data }: DashboardClientProps) {
   const today = new Date()
-  const latestPrediction = SEED_PREDICTIONS[SEED_PREDICTIONS.length - 1]
-  const todayTasks = SEED_PLAN_TASKS.filter(t => t.date === format(today, 'yyyy-MM-dd'))
-  const todayDone = todayTasks.filter(t => t.status === 'done').length
-  const xpToNextLevel = (SEED_LEVEL * 500) - SEED_XP
-  const levelProgress = ((SEED_XP % 500) / 500) * 100
-  // cast to avoid TS literal narrowing on const assertions
-  const burnoutLevel = SEED_BURNOUT.level as string
+  const {
+    student, goal, streak, xp, level, predictions,
+    subjectStats, weeklyChart, planTasks, burnout, recentActivity,
+  } = data
+
+  const latestPrediction = predictions[predictions.length - 1]
+  const todayStr = format(today, 'yyyy-MM-dd')
+  const todayTasks = planTasks.filter((t) => t.date === todayStr)
+  // Tasks actually shown in the card (fall back to the next 3 planned tasks)
+  const shownTasks = (todayTasks.length > 0 ? todayTasks : planTasks.slice(0, 3)).slice(0, 3)
+  const shownDone = shownTasks.filter((t) => t.status === 'done').length
+  const xpToNextLevel = level * 500 - xp
+  const levelProgress = ((xp % 500) / 500) * 100
+  const burnoutLevel = burnout.level
 
   return (
     <motion.div
@@ -57,10 +56,10 @@ export function DashboardClient() {
       <motion.div variants={fadeUp} className="flex items-start justify-between">
         <div>
           <h1 className="text-[32px] font-bold text-[var(--text-primary)] tracking-tight">
-            Welcome back, {SEED_STUDENT.full_name.split(' ')[0]}! 👋
+            Welcome back, {student.full_name.split(' ')[0]}! 👋
           </h1>
           <p className="text-[14px] text-[var(--text-secondary)] mt-1">
-            {format(today, 'EEEE, MMMM d')} · {SEED_STREAK.current} day streak 🔥
+            {format(today, 'EEEE, MMMM d')} · {streak.current} day streak 🔥
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -87,7 +86,7 @@ export function DashboardClient() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Target className="w-4 h-4 text-[var(--accent-blue)]" />
-                <CardTitle>Target: {SEED_GOAL.target_overall_pct}% in CBSE Class 12</CardTitle>
+                <CardTitle>Target: {goal.target_overall_pct}% in CBSE Class 12</CardTitle>
               </div>
               <Link href="/predictor" className="text-[13px] font-medium text-[var(--accent-blue)] hover:opacity-70 transition-opacity flex items-center gap-1">
                 View Predictor <ArrowRight className="w-3 h-3" />
@@ -114,7 +113,7 @@ export function DashboardClient() {
                     <span className="text-[12px] text-[var(--text-secondary)]">{latestPrediction.confidence_pct}% confidence</span>
                   </div>
                   <div className="space-y-1.5">
-                    {SEED_SUBJECT_STATS.slice(0, 3).map((s) => (
+                    {subjectStats.slice(0, 3).map((s) => (
                       <div key={s.subject} className="flex items-center gap-2">
                         <span className="text-[12px] text-[var(--text-secondary)] w-16 shrink-0">{s.subject}</span>
                         <div className="flex-1 h-1.5 bg-[var(--bg-subtle)] rounded-full overflow-hidden">
@@ -134,7 +133,7 @@ export function DashboardClient() {
               <div>
                 <p className="text-[11px] text-[var(--text-secondary)] uppercase tracking-wide mb-2">Score Trend</p>
                 <ScoreLineChart
-                  data={SEED_PREDICTIONS.map((p, i) => ({ week: `W${i + 1}`, score: Math.round(p.predicted_overall_pct) }))}
+                  data={predictions.map((p, i) => ({ week: `W${i + 1}`, score: Math.round(p.predicted_overall_pct) }))}
                   xKey="week"
                   yKey="score"
                   height={60}
@@ -153,10 +152,10 @@ export function DashboardClient() {
                 <div>
                   <p className="text-[12px] text-[var(--text-secondary)] uppercase tracking-wide mb-1">Study Streak</p>
                   <div className="flex items-end gap-1">
-                    <span className="text-[36px] font-bold text-[var(--text-primary)] leading-none">{SEED_STREAK.current}</span>
+                    <span className="text-[36px] font-bold text-[var(--text-primary)] leading-none">{streak.current}</span>
                     <span className="text-[14px] text-[var(--text-secondary)] mb-1">days</span>
                   </div>
-                  <p className="text-[12px] text-[var(--text-secondary)] mt-1">Best: {SEED_STREAK.longest} days</p>
+                  <p className="text-[12px] text-[var(--text-secondary)] mt-1">Best: {streak.longest} days</p>
                 </div>
                 <div className="text-[40px]">🔥</div>
               </div>
@@ -168,9 +167,9 @@ export function DashboardClient() {
             <Card>
               <div className="flex items-center justify-between mb-2">
                 <div>
-                  <p className="text-[12px] text-[var(--text-secondary)] uppercase tracking-wide mb-1">Level {SEED_LEVEL}</p>
+                  <p className="text-[12px] text-[var(--text-secondary)] uppercase tracking-wide mb-1">Level {level}</p>
                   <div className="flex items-end gap-1">
-                    <span className="text-[28px] font-bold text-[var(--text-primary)] leading-none">{SEED_XP.toLocaleString()}</span>
+                    <span className="text-[28px] font-bold text-[var(--text-primary)] leading-none">{xp.toLocaleString()}</span>
                     <span className="text-[12px] text-[var(--text-secondary)] mb-1">XP</span>
                   </div>
                 </div>
@@ -184,7 +183,7 @@ export function DashboardClient() {
                   transition={{ duration: 0.8, ease: 'easeOut' }}
                 />
               </div>
-              <p className="text-[11px] text-[var(--text-secondary)] mt-1">{xpToNextLevel} XP to Level {SEED_LEVEL + 1}</p>
+              <p className="text-[11px] text-[var(--text-secondary)] mt-1">{xpToNextLevel} XP to Level {level + 1}</p>
             </Card>
           </motion.div>
 
@@ -193,11 +192,11 @@ export function DashboardClient() {
             <Card className="h-full">
               <CardHeader>
                 <CardTitle className="text-[15px]">Today&apos;s Tasks</CardTitle>
-                <span className="text-[12px] text-[var(--text-secondary)]">{todayDone}/{todayTasks.length || 3}</span>
+                <span className="text-[12px] text-[var(--text-secondary)]">{shownDone}/{shownTasks.length}</span>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {(todayTasks.length > 0 ? todayTasks : SEED_PLAN_TASKS.slice(0, 3)).slice(0, 3).map((task) => (
+                  {shownTasks.map((task) => (
                     <div key={task.id} className="flex items-center gap-2">
                       {task.status === 'done' ? (
                         <CheckCircle2 className="w-4 h-4 text-[var(--accent-green)] shrink-0" />
@@ -206,13 +205,13 @@ export function DashboardClient() {
                       )}
                       <div className="flex-1 min-w-0">
                         <p className={`text-[13px] truncate ${task.status === 'done' ? 'text-[var(--text-tertiary)] line-through' : 'text-[var(--text-primary)]'}`}>
-                          {task.chapter_id.replace('-', ' ').toUpperCase()}
+                          {task.chapter_id.replaceAll('-', ' ').toUpperCase()}
                         </p>
                         <p className="text-[11px] text-[var(--text-secondary)]">{task.est_minutes} min · {task.type}</p>
                       </div>
                     </div>
                   ))}
-                  {todayTasks.length === 0 && (
+                  {shownTasks.length === 0 && (
                     <p className="text-[13px] text-[var(--text-secondary)] text-center py-2">
                       Tasks load from your plan
                     </p>
@@ -234,12 +233,12 @@ export function DashboardClient() {
                 Goal Hours Logged
               </CardTitle>
               <span className="text-[14px] font-semibold text-[var(--text-primary)]">
-                {SEED_WEEKLY_CHART.reduce((s, d) => s + d.goalHrs, 0).toFixed(1)} hrs
+                {weeklyChart.reduce((s, d) => s + d.goalHrs, 0).toFixed(1)} hrs
               </span>
             </CardHeader>
             <CardContent>
               <ScoreLineChart
-                data={SEED_WEEKLY_CHART}
+                data={weeklyChart}
                 xKey="day"
                 yKey="goalHrs"
                 color="#2A7AFE"
@@ -258,12 +257,12 @@ export function DashboardClient() {
                 Focus Score
               </CardTitle>
               <span className="text-[14px] font-semibold text-[var(--text-primary)]">
-                {Math.round(SEED_WEEKLY_CHART.reduce((s, d) => s + d.focusScore, 0) / SEED_WEEKLY_CHART.length)}%
+                {Math.round(weeklyChart.reduce((s, d) => s + d.focusScore, 0) / weeklyChart.length)}%
               </span>
             </CardHeader>
             <CardContent>
               <ScoreLineChart
-                data={SEED_WEEKLY_CHART}
+                data={weeklyChart}
                 xKey="day"
                 yKey="focusScore"
                 color="#34C759"
@@ -289,7 +288,7 @@ export function DashboardClient() {
               </Link>
             </CardHeader>
             <CardContent>
-              <SubjectRadar data={SEED_SUBJECT_STATS} height={200} />
+              <SubjectRadar data={subjectStats} height={200} />
             </CardContent>
           </Card>
         </motion.div>
@@ -303,7 +302,7 @@ export function DashboardClient() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {SEED_RECENT_ACTIVITY.map((item, i) => (
+                {recentActivity.map((item, i) => (
                   <div key={i} className="flex items-start gap-3">
                     <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${
                       item.type === 'achievement' ? 'bg-[var(--accent-orange)]' :
@@ -358,7 +357,7 @@ export function DashboardClient() {
                   burnoutLevel === 'high' ? 'bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400' : 'bg-orange-50 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400'
                 }`}>
                   <p className="font-medium mb-1">{burnoutLevel === 'high' ? '🛌 Rest Day Recommended' : '⚠️ Burnout Watch'}</p>
-                  <p>{SEED_BURNOUT.interventions[0]}</p>
+                  <p>{burnout.interventions[0]}</p>
                 </div>
               )}
             </CardContent>

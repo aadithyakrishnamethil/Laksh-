@@ -3,13 +3,14 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, ChevronRight, ChevronLeft, Check, Calendar, Target, Loader2 } from 'lucide-react'
+import { Sparkles, ChevronRight, ChevronLeft, Check, Calendar, Target } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import type { GoalAnalysis } from '@/types'
 import { CBSE_SUBJECTS } from '@/lib/utils/constants'
+import { saveOnboarding } from '@/lib/actions/onboarding'
 
 const CBSE_SUBJECT_OPTS = CBSE_SUBJECTS.map((s) => ({ id: s.id, name: s.name, icon: s.icon }))
 
@@ -19,12 +20,13 @@ export default function OnboardingPage() {
   const router = useRouter()
   const [step, setStep] = useState<Step>(1)
   const [fullName, setFullName] = useState('')
-  const [examDate, setExamDate] = useState('2025-03-15')
+  const [examDate, setExamDate] = useState('2027-03-15')
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>(['phy', 'chem', 'math'])
   const [targetPct, setTargetPct] = useState(90)
   const [analyzing, setAnalyzing] = useState(false)
   const [analysis, setAnalysis] = useState<GoalAnalysis | null>(null)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
 
   function toggleSubject(id: string) {
     setSelectedSubjects((prev) =>
@@ -70,12 +72,29 @@ export default function OnboardingPage() {
   }
 
   async function finishOnboarding() {
+    if (!analysis) return
     setSaving(true)
+    setSaveError('')
     try {
-      // TODO: Save profile, goal, and subject goals to Supabase
-      await new Promise((resolve) => setTimeout(resolve, 800)) // simulate save
+      // Both success and the unauthenticated fallback resolve without throwing;
+      // only real errors (DB constraints, network) reach the catch below.
+      await saveOnboarding({
+        fullName,
+        examDate,
+        targetPct,
+        subjectGoals: analysis.subjectBreakdowns.map((sb) => ({
+          subjectId: sb.subjectId,
+          targetPct: sb.targetPct,
+          requiredEffortHrs: sb.requiredEffortHrs,
+          feasibility: sb.feasibility,
+          rationale: sb.rationale,
+        })),
+      })
       router.push('/dashboard')
-    } finally {
+    } catch (e) {
+      setSaveError(
+        e instanceof Error ? e.message : 'Something went wrong saving your goals. Please try again.'
+      )
       setSaving(false)
     }
   }
@@ -344,6 +363,12 @@ export default function OnboardingPage() {
                     <span className="text-[var(--text-secondary)]">Weekly effort needed</span>
                     <span className="font-semibold text-[var(--text-primary)]">{analysis.totalWeeklyHrs} hours/week</span>
                   </div>
+
+                  {saveError && (
+                    <p className="text-[13px] text-[var(--accent-red)] bg-red-50 dark:bg-red-950/30 rounded-[var(--radius-md)] px-3 py-2">
+                      {saveError}
+                    </p>
+                  )}
 
                   <div className="flex gap-3 pt-2">
                     <Button variant="secondary" size="md" onClick={() => setAnalysis(null)} className="flex-1">

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sparkles, BookOpen, ChevronRight, Loader2, Copy, Check } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
+import { format } from 'date-fns'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -228,7 +229,7 @@ export default function NotesPage() {
                             AI Generated
                           </Badge>
                           <span className="text-[11px] text-[var(--text-secondary)]">
-                            {viewNote.generatedAt.toLocaleDateString()}
+                            {format(viewNote.generatedAt, 'd MMM yyyy')}
                           </span>
                         </div>
                       </div>
