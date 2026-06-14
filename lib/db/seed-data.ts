@@ -147,3 +147,80 @@ export const SEED_SUBJECT_STATS = [
   { subject: 'Biology',  mastery: 76, target: 88, color: '#FF3B30' },
   { subject: 'English',  mastery: 82, target: 90, color: '#675178' },
 ]
+
+// ─── Parent dashboard seed ────────────────────────────────────────────────
+
+export const SEED_PARENT = {
+  id: 'seed-parent-1',
+  role: 'parent' as const,
+  full_name: 'Rajiv Sharma',
+  child_name: SEED_STUDENT.full_name,
+}
+
+// 14-day attendance / study consistency for the parent overview
+export const SEED_PARENT_WEEKLY = Array.from({ length: 7 }, (_, i) => {
+  const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const minutes = [85, 120, 60, 0, 140, 95, 110]
+  return { day: labels[i], minutes: minutes[i], hours: +(minutes[i] / 60).toFixed(1) }
+})
+
+export const SEED_PARENT_HIGHLIGHTS = [
+  { text: 'Maintained a 12-day study streak', tone: 'positive' as const },
+  { text: 'Predicted score up 3% since last assessment', tone: 'positive' as const },
+  { text: 'Organic Chemistry & Integration need encouragement', tone: 'attention' as const },
+  { text: 'Two late-night sessions logged this week', tone: 'attention' as const },
+]
+
+// ─── Teacher dashboard seed ───────────────────────────────────────────────
+
+export const SEED_TEACHER = {
+  id: 'seed-teacher-1',
+  role: 'teacher' as const,
+  full_name: 'Dr. Meera Iyer',
+  className: 'Class 12-A (Science)',
+}
+
+export const SEED_COHORT = {
+  classId: 'class-12a',
+  className: 'Class 12-A (Science)',
+  studentCount: 32,
+  atRiskCount: 6,
+  onTrackCount: 21,
+  aheadCount: 5,
+  avgPredictedScore: 79,
+  weakestChapters: [
+    { chapterId: 'phy-9',  name: 'Ray Optics',         avgMastery: 52 },
+    { chapterId: 'math-7', name: 'Integrals',          avgMastery: 55 },
+    { chapterId: 'chem-9', name: 'Coordination Comp.', avgMastery: 58 },
+    { chapterId: 'phy-4',  name: 'Electrostatics',     avgMastery: 61 },
+  ],
+}
+
+export const SEED_COHORT_RADAR = [
+  { subject: 'Physics',   mastery: 68, target: 85 },
+  { subject: 'Chemistry', mastery: 74, target: 85 },
+  { subject: 'Math',      mastery: 71, target: 85 },
+  { subject: 'Biology',   mastery: 80, target: 85 },
+  { subject: 'English',   mastery: 83, target: 85 },
+]
+
+export const SEED_COHORT_TREND = Array.from({ length: 8 }, (_, i) => ({
+  week: `W${i + 1}`,
+  avg: 70 + i * 1.3,
+}))
+
+type RiskLevel = 'on-track' | 'at-risk' | 'critical'
+
+export const SEED_COHORT_STUDENTS: Array<{
+  id: string; name: string; predicted: number; target: number;
+  streak: number; risk: RiskLevel; weakSubject: string; lastActive: string
+}> = [
+  { id: 's1', name: 'Anya Sharma',    predicted: 88, target: 92, streak: 12, risk: 'on-track', weakSubject: 'Physics',   lastActive: '2h ago' },
+  { id: 's2', name: 'Kabir Mehta',    predicted: 62, target: 80, streak: 0,  risk: 'critical', weakSubject: 'Math',      lastActive: '4d ago' },
+  { id: 's3', name: 'Ishaan Roy',     predicted: 74, target: 85, streak: 3,  risk: 'at-risk',  weakSubject: 'Chemistry', lastActive: '1d ago' },
+  { id: 's4', name: 'Diya Nair',      predicted: 91, target: 90, streak: 18, risk: 'on-track', weakSubject: 'English',   lastActive: '1h ago' },
+  { id: 's5', name: 'Arjun Verma',    predicted: 58, target: 75, streak: 1,  risk: 'critical', weakSubject: 'Physics',   lastActive: '6d ago' },
+  { id: 's6', name: 'Sara Khan',      predicted: 83, target: 88, streak: 9,  risk: 'on-track', weakSubject: 'Math',      lastActive: '3h ago' },
+  { id: 's7', name: 'Rohan Gupta',    predicted: 71, target: 82, streak: 2,  risk: 'at-risk',  weakSubject: 'Biology',   lastActive: '2d ago' },
+  { id: 's8', name: 'Meera Pillai',   predicted: 94, target: 95, streak: 21, risk: 'on-track', weakSubject: 'Chemistry', lastActive: '30m ago' },
+]
