@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import { ServiceWorkerRegistrar } from '@/components/sw-registrar'
 
 const inter = Inter({
   variable: '--font-inter',
@@ -16,6 +17,12 @@ export const metadata: Metadata = {
   description:
     'AI-powered study platform for CBSE Class 12 board exam preparation. Personalised plans, adaptive diagnostics, and smart coaching.',
   keywords: ['CBSE', 'Class 12', 'board exam', 'study app', 'AI tutor', 'India'],
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Laksh',
+  },
 }
 
 export const viewport: Viewport = {
@@ -29,6 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${inter.variable} h-full`} suppressHydrationWarning>
       <body className="h-full antialiased">
         {children}
+        <ServiceWorkerRegistrar />
       </body>
     </html>
   )

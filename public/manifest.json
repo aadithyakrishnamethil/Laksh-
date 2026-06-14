@@ -1,0 +1,42 @@
+{
+  "name": "Laksh — CBSE Class 12 AI Study Platform",
+  "short_name": "Laksh",
+  "description": "AI-powered CBSE exam prep for Class 12. Personalised plans, adaptive diagnostics, smart AI coaching.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#FBFBFD",
+  "theme_color": "#2A7AFE",
+  "orientation": "portrait-primary",
+  "categories": ["education"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "url": "/dashboard",
+      "description": "View your study dashboard"
+    },
+    {
+      "name": "Planner",
+      "url": "/planner",
+      "description": "Check today's study tasks"
+    },
+    {
+      "name": "AI Coach",
+      "url": "/coach",
+      "description": "Chat with your AI tutor"
+    }
+  ]
+}

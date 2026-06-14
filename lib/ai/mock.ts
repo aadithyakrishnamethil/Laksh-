@@ -184,7 +184,7 @@ export class MockAIService implements AIService {
     }
   }
 
-  coachChat(messages: Array<{ role: 'user' | 'assistant'; content: string }>, _context: StudentContext): ReadableStream {
+  coachChat(messages: Array<{ role: 'user' | 'assistant'; content: string }>, _context?: StudentContext): ReadableStream {
     const lastMessage = messages[messages.length - 1]?.content ?? ''
     const responses = [
       `Great question! Here's how I'd approach this: Focus on understanding the concept first, then practice with examples. Your weak areas in the plan are great starting points. What specific topic would you like to dive into?`,

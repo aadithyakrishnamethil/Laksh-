@@ -112,10 +112,15 @@ Return JSON: { predictedOverallPct: number, confidencePct: number, perSubject: {
     return ScorePredictionSchema.parse(raw) as ScorePrediction
   }
 
-  coachChat(messages: Array<{ role: 'user' | 'assistant'; content: string }>, context: StudentContext): ReadableStream {
-    const systemPrompt = `You are Laksh AI Coach, a supportive study companion for ${context.profile.full_name}, a CBSE Class 12 student aiming for ${context.goal?.target_overall_pct ?? 90}%.
-Weak chapters: ${context.mastery.filter(m => m.label === 'weakness').map(m => m.chapter_id).slice(0, 5).join(', ')}.
-Streak: ${context.streak?.current ?? 0} days. Burnout level: ${context.burnoutLevel}.
+  coachChat(messages: Array<{ role: 'user' | 'assistant'; content: string }>, context?: StudentContext): ReadableStream {
+    const name = context?.profile?.full_name ?? 'Student'
+    const target = context?.goal?.target_overall_pct ?? 90
+    const weakChapters = context?.mastery?.filter(m => m.label === 'weakness').map(m => m.chapter_id).slice(0, 5).join(', ') ?? ''
+    const streak = context?.streak?.current ?? 0
+    const burnout = context?.burnoutLevel ?? 'ok'
+    const systemPrompt = `You are Laksh AI Coach, a supportive study companion for ${name}, a CBSE Class 12 student aiming for ${target}%.
+${weakChapters ? `Weak chapters: ${weakChapters}.` : ''}
+Streak: ${streak} days. Burnout level: ${burnout}.
 Be encouraging, precise, and India-exam-specific. Use markdown for formatting.`
     return makeStream(this.client, systemPrompt, messages, 1024)
   }

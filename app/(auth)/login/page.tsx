@@ -25,6 +25,7 @@ export default function LoginPage() {
       const supabase = createClient()
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
+      router.refresh()
       router.push('/dashboard')
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Login failed')
@@ -34,7 +35,9 @@ export default function LoginPage() {
   }
 
   async function handleDemoLogin() {
-    // Dev shortcut: skip auth and go to dashboard
+    // Set a guest cookie so the proxy allows read-only access to seed data
+    // without a Supabase session, then go to the dashboard.
+    document.cookie = 'laksh-demo=1; path=/; max-age=86400; samesite=lax'
     router.push('/dashboard')
   }
 

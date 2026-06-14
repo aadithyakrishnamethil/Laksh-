@@ -33,7 +33,7 @@ export interface AIService {
   predictScore(input: PredictionInput): Promise<ScorePrediction>
 
   // Coach (streaming)
-  coachChat(messages: Array<{ role: 'user' | 'assistant'; content: string }>, context: StudentContext): ReadableStream
+  coachChat(messages: Array<{ role: 'user' | 'assistant'; content: string }>, context?: StudentContext): ReadableStream
 
   // Doubt Solver
   solveDoubt(question: string, subjectId: string): Promise<Solution>
