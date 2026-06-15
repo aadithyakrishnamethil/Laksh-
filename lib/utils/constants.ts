@@ -121,7 +121,46 @@ export const CBSE_SUBJECTS = [
       { name: 'Society, Law and Ethics', weightage: 14 },
     ],
   },
+  {
+    id: 'ip',
+    name: 'Informatics Practices',
+    color: '#00B8D4',
+    icon: '🗄️',
+    // CBSE Class 12 Informatics Practices syllabus (2025-26): 4 units
+    chapters: [
+      { name: 'Data Handling using Pandas – Series & DataFrames', weightage: 15 },
+      { name: 'Data Visualisation using Matplotlib', weightage: 10 },
+      { name: 'Database Query using SQL', weightage: 25 },
+      { name: 'Introduction to Computer Networks', weightage: 10 },
+      { name: 'Societal Impacts', weightage: 10 },
+    ],
+  },
+  {
+    id: 'psych',
+    name: 'Psychology',
+    color: '#AF52DE',
+    icon: '🧠',
+    // NCERT Class 12 Psychology textbook: 9 chapters
+    chapters: [
+      { name: 'Variations in Psychological Attributes', weightage: 9 },
+      { name: 'Self and Personality', weightage: 10 },
+      { name: 'Meeting Life Challenges', weightage: 7 },
+      { name: 'Psychological Disorders', weightage: 10 },
+      { name: 'Therapeutic Approaches', weightage: 9 },
+      { name: 'Attitude and Social Cognition', weightage: 8 },
+      { name: 'Social Influence and Group Processes', weightage: 7 },
+      { name: 'Psychology and Life', weightage: 6 },
+      { name: 'Developing Psychological Skills', weightage: 4 },
+    ],
+  },
 ]
+
+/** A student in Class 12 can pick at most 5 subjects. */
+export const MAX_SUBJECTS = 5
+/** English is compulsory and always selected. */
+export const COMPULSORY_SUBJECT = 'eng'
+/** Sensible default selection (science stream) used before the user customises. */
+export const DEFAULT_SUBJECT_IDS = ['phy', 'chem', 'math', 'bio', 'eng']
 
 export const XP_REWARDS = {
   task_completed: 20,
@@ -160,6 +199,8 @@ export const SUBJECT_COLORS: Record<string, string> = {
   bio: '#FF3B30',
   eng: '#675178',
   cs: '#423376',
+  ip: '#00B8D4',
+  psych: '#AF52DE',
 }
 
 export const BOARD = 'CBSE'

@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
+import type { Profile } from '@/types'
+import { ACHIEVEMENT_DEFS } from '@/lib/utils/constants'
 import {
   SEED_STUDENT,
   SEED_GOAL,
@@ -12,6 +14,7 @@ import {
   SEED_BURNOUT,
   SEED_RECENT_ACTIVITY,
 } from '@/lib/db/seed-data'
+import type { SubjectBreakdown } from '@/stores/goal-store'
 
 export interface DashboardData {
   student: { full_name: string }
@@ -261,6 +264,25 @@ export async function getDashboardData(): Promise<DashboardData> {
   }
 }
 
+/**
+ * Returns the signed-in user's profile, or the seed student when Supabase
+ * isn't configured / no user is signed in (demo mode).
+ */
+export async function getProfile(): Promise<Profile> {
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return SEED_STUDENT
+
+    const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+    return data ?? SEED_STUDENT
+  } catch {
+    return SEED_STUDENT
+  }
+}
+
 export async function getUnreadNotificationCount(userId: string): Promise<number> {
   try {
     const supabase = await createClient()
@@ -301,5 +323,258 @@ export async function getPlannerData(userId: string) {
     }
   } catch {
     return { tasks: SEED_PLAN_TASKS, planId: null }
+  }
+}
+
+export interface GoalData {
+  targetPct: number
+  subjectBreakdowns: Record<string, SubjectBreakdown>
+  updatedAt: string | null
+  isRealData: boolean
+}
+
+/** Load the student's active goal and per-subject breakdowns from Supabase. */
+export async function getGoalData(): Promise<GoalData> {
+  const fallback: GoalData = {
+    targetPct: SEED_GOAL.target_overall_pct,
+    subjectBreakdowns: {},
+    updatedAt: SEED_GOAL.created_at,
+    isRealData: false,
+  }
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return fallback
+
+    const { data: goal } = await supabase
+      .from('goals')
+      .select('id, target_overall_pct, created_at')
+      .eq('student_id', user.id)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    if (!goal) return { ...fallback, isRealData: true, targetPct: fallback.targetPct, updatedAt: null }
+
+    const { data: subjectGoals } = await supabase
+      .from('subject_goals')
+      .select('subject_id, target_pct, required_effort_hrs, ai_feasibility, ai_rationale')
+      .eq('goal_id', goal.id)
+
+    const subjectBreakdowns: Record<string, SubjectBreakdown> = {}
+    for (const sg of subjectGoals ?? []) {
+      subjectBreakdowns[sg.subject_id] = {
+        targetPct: sg.target_pct,
+        requiredEffortHrs: sg.required_effort_hrs,
+        feasibility: sg.ai_feasibility as SubjectBreakdown['feasibility'],
+        rationale: sg.ai_rationale,
+      }
+    }
+
+    return {
+      targetPct: goal.target_overall_pct,
+      subjectBreakdowns,
+      updatedAt: goal.created_at,
+      isRealData: true,
+    }
+  } catch {
+    return fallback
+  }
+}
+
+export interface LeaderboardRow {
+  id: string
+  full_name: string
+  avatar_url: string | null
+  total_xp: number
+  level: number
+  rank: number
+  isMe: boolean
+}
+
+export interface LeaderboardData {
+  board: LeaderboardRow[]
+  myRank: number | null
+  isRealData: boolean
+}
+
+/** Fetch XP-ranked leaderboard. Aggregates xp_events per student in JS. */
+export async function getLeaderboardData(): Promise<LeaderboardData> {
+  const empty: LeaderboardData = { board: [], myRank: null, isRealData: false }
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return empty
+
+    const [profilesRes, xpRes] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .eq('role', 'student')
+        .limit(200),
+      supabase.from('xp_events').select('student_id, amount'),
+    ])
+
+    const profiles = profilesRes.data ?? []
+    const xpEvents = xpRes.data ?? []
+
+    // Sum XP per student.
+    const xpByStudent: Record<string, number> = {}
+    for (const ev of xpEvents) {
+      xpByStudent[ev.student_id] = (xpByStudent[ev.student_id] ?? 0) + (ev.amount ?? 0)
+    }
+
+    const ranked = profiles
+      .map((p) => {
+        const total_xp = xpByStudent[p.id] ?? 0
+        return {
+          id: p.id,
+          full_name: p.full_name,
+          avatar_url: p.avatar_url,
+          total_xp,
+          level: Math.floor(total_xp / 500) + 1,
+          isMe: p.id === user.id,
+        }
+      })
+      .sort((a, b) => b.total_xp - a.total_xp)
+      .map((p, i) => ({ ...p, rank: i + 1 }))
+
+    const myRank = ranked.find((r) => r.isMe)?.rank ?? null
+
+    return { board: ranked, myRank, isRealData: true }
+  } catch {
+    return empty
+  }
+}
+
+export interface AchievementWithStatus {
+  code: string
+  title: string
+  desc: string
+  icon: string
+  tier: 'bronze' | 'silver' | 'gold' | 'platinum'
+  earned: boolean
+  earnedAt: string | null
+}
+
+export interface AchievementsData {
+  achievements: AchievementWithStatus[]
+  totalXp: number
+  level: number
+  currentStreak: number
+  longestStreak: number
+  isRealData: boolean
+}
+
+/** Evaluate achievement rules against real DB data and return earned/locked status. */
+export async function getAchievementsData(): Promise<AchievementsData> {
+  const fallback: AchievementsData = {
+    achievements: ACHIEVEMENT_DEFS.map((a) => ({ ...a, earned: false, earnedAt: null })),
+    totalXp: 0,
+    level: 1,
+    currentStreak: 0,
+    longestStreak: 0,
+    isRealData: false,
+  }
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return fallback
+
+    const [xpRes, streakRes, goalsRes, diagRes, masteryRes, attemptsRes, challengesRes] =
+      await Promise.all([
+        supabase.from('xp_events').select('amount, created_at').eq('student_id', user.id),
+        supabase.from('streaks').select('current, longest').eq('student_id', user.id).single(),
+        supabase
+          .from('goals')
+          .select('id, status, created_at')
+          .eq('student_id', user.id)
+          .order('created_at', { ascending: true })
+          .limit(1),
+        supabase
+          .from('diagnostics')
+          .select('id')
+          .eq('student_id', user.id)
+          .not('completed_at', 'is', null)
+          .limit(1),
+        supabase
+          .from('mastery')
+          .select('label')
+          .eq('student_id', user.id),
+        supabase
+          .from('attempts')
+          .select('score')
+          .eq('student_id', user.id)
+          .gte('score', 80)
+          .limit(1),
+        supabase
+          .from('challenge_progress')
+          .select('completed, earned_at:updated_at')
+          .eq('student_id', user.id)
+          .eq('completed', true)
+          .limit(1),
+      ])
+
+    const xpEvents = xpRes.data ?? []
+    const totalXp = xpEvents.reduce((sum, e) => sum + (e.amount ?? 0), 0)
+    const level = Math.floor(totalXp / 500) + 1
+    const streak = streakRes.data ?? { current: 0, longest: 0 }
+    const masteryRows = masteryRes.data ?? []
+    const allStrength =
+      masteryRows.length > 0 && masteryRows.every((m) => m.label === 'strength')
+
+    // Evaluate each achievement rule.
+    function evaluate(code: string): boolean {
+      switch (code) {
+        case 'first_login':
+          return true
+        case 'goal_set':
+          return (goalsRes.data?.length ?? 0) > 0
+        case 'diagnostic_done':
+          return (diagRes.data?.length ?? 0) > 0
+        case 'xp_500':
+          return totalXp >= 500
+        case 'xp_5000':
+          return totalXp >= 5000
+        case 'streak_7':
+          return streak.current >= 7 || streak.longest >= 7
+        case 'streak_30':
+          return streak.current >= 30 || streak.longest >= 30
+        case 'mock_test_80':
+          return (attemptsRes.data?.length ?? 0) > 0
+        case 'week_challenge':
+          return (challengesRes.data?.length ?? 0) > 0
+        case 'all_chapters_strength':
+          return allStrength
+        case 'goal_achieved':
+          return (goalsRes.data ?? []).some((g) => g.status === 'achieved')
+        default:
+          return false
+      }
+    }
+
+    const achievements: AchievementWithStatus[] = ACHIEVEMENT_DEFS.map((a) => ({
+      ...a,
+      earned: evaluate(a.code),
+      earnedAt: null,
+    }))
+
+    return {
+      achievements,
+      totalXp,
+      level,
+      currentStreak: streak.current,
+      longestStreak: streak.longest,
+      isRealData: true,
+    }
+  } catch {
+    return fallback
   }
 }

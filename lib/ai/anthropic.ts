@@ -29,7 +29,7 @@ import {
 } from '@/lib/utils/zod-schemas'
 import { MockAIService } from './mock'
 
-const MODEL = 'claude-sonnet-4-6'
+const MODEL = 'claude-opus-4-8'
 
 async function callClaude(
   client: Anthropic,
@@ -118,7 +118,9 @@ Return JSON: { predictedOverallPct: number, confidencePct: number, perSubject: {
     const weakChapters = context?.mastery?.filter(m => m.label === 'weakness').map(m => m.chapter_id).slice(0, 5).join(', ') ?? ''
     const streak = context?.streak?.current ?? 0
     const burnout = context?.burnoutLevel ?? 'ok'
+    const subjects = context?.subjects?.length ? context.subjects.join(', ') : ''
     const systemPrompt = `You are Laksh AI Coach, a supportive study companion for ${name}, a CBSE Class 12 student aiming for ${target}%.
+${subjects ? `The student is studying: ${subjects}. Keep guidance within these subjects.` : ''}
 ${weakChapters ? `Weak chapters: ${weakChapters}.` : ''}
 Streak: ${streak} days. Burnout level: ${burnout}.
 Be encouraging, precise, and India-exam-specific. Use markdown for formatting.`

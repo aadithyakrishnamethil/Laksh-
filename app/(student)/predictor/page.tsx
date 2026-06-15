@@ -8,8 +8,9 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ProgressRing } from '@/components/ui/progress-ring'
-import { SEED_PREDICTIONS, SEED_SUBJECT_GOALS, SEED_GOAL } from '@/lib/db/seed-data'
+import { SEED_PREDICTIONS } from '@/lib/db/seed-data'
 import { CBSE_SUBJECTS } from '@/lib/utils/constants'
+import { useGoalStore } from '@/stores/goal-store'
 
 const LATEST = SEED_PREDICTIONS[SEED_PREDICTIONS.length - 1]
 
@@ -36,10 +37,12 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 
 export default function PredictorPage() {
   const [refreshing, setRefreshing] = useState(false)
+  const targetPct = useGoalStore((s) => s.targetPct)
+  const subjectBreakdowns = useGoalStore((s) => s.subjectBreakdowns)
 
   const risk = RISK_CONFIG[LATEST.risk_level]
   const RiskIcon = risk.icon
-  const targetGap = SEED_GOAL.target_overall_pct - LATEST.predicted_overall_pct
+  const targetGap = targetPct - LATEST.predicted_overall_pct
   const onTrack = targetGap <= 0
 
   async function refresh() {
@@ -96,7 +99,7 @@ export default function PredictorPage() {
           <div>
             <p className="text-[13px] text-[var(--text-secondary)] mb-1">Target Goal</p>
             <div className="flex items-end gap-2">
-              <span className="text-[36px] font-bold text-[var(--text-primary)]">{SEED_GOAL.target_overall_pct}%</span>
+              <span className="text-[36px] font-bold text-[var(--text-primary)]">{targetPct}%</span>
               <span className="text-[14px] text-[var(--text-secondary)] pb-2">overall</span>
             </div>
           </div>
@@ -117,7 +120,7 @@ export default function PredictorPage() {
             <div
               className="h-full rounded-full transition-all duration-700"
               style={{
-                width: `${Math.min(100, (LATEST.predicted_overall_pct / SEED_GOAL.target_overall_pct) * 100)}%`,
+                width: `${Math.min(100, (LATEST.predicted_overall_pct / targetPct) * 100)}%`,
                 background: onTrack ? '#34C759' : 'linear-gradient(90deg,#2A7AFE,#53C8FF)',
               }}
             />
@@ -167,9 +170,10 @@ export default function PredictorPage() {
             <div className="space-y-5">
               {Object.entries(LATEST.per_subject).map(([subId, data]) => {
                 const sub = CBSE_SUBJECTS.find((s) => s.id === subId)
-                const sg = SEED_SUBJECT_GOALS.find((s) => s.subject_id === subId)
-                const gap = data.target - data.predicted
-                const pct = Math.min(100, (data.predicted / data.target) * 100)
+                const sg = subjectBreakdowns[subId]
+                const subjectTarget = sg?.targetPct ?? data.target
+                const gap = subjectTarget - data.predicted
+                const pct = Math.min(100, (data.predicted / subjectTarget) * 100)
                 const statusColor = gap <= 0 ? '#34C759' : gap <= 5 ? '#FF9F0A' : '#FF3B30'
                 return (
                   <div key={subId}>
@@ -178,14 +182,14 @@ export default function PredictorPage() {
                         <span className="text-[18px]">{sub?.icon}</span>
                         <span className="text-[14px] font-medium text-[var(--text-primary)]">{sub?.name}</span>
                         {sg && (
-                          <Badge variant={sg.ai_feasibility === 'feasible' ? 'green' : sg.ai_feasibility === 'stretch' ? 'orange' : 'red'}>
-                            {sg.ai_feasibility}
+                          <Badge variant={sg.feasibility === 'feasible' ? 'green' : sg.feasibility === 'stretch' ? 'orange' : 'red'}>
+                            {sg.feasibility}
                           </Badge>
                         )}
                       </div>
                       <div className="text-right">
                         <span className="text-[16px] font-bold" style={{ color: statusColor }}>{Math.round(data.predicted)}%</span>
-                        <span className="text-[13px] text-[var(--text-secondary)] ml-2">/ {data.target}%</span>
+                        <span className="text-[13px] text-[var(--text-secondary)] ml-2">/ {subjectTarget}%</span>
                       </div>
                     </div>
                     <div className="h-2.5 bg-[var(--bg-subtle)] rounded-full overflow-hidden">
@@ -200,7 +204,7 @@ export default function PredictorPage() {
                     {gap > 0 && (
                       <p className="text-[11px] text-[var(--text-secondary)] mt-1 flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        {gap.toFixed(1)}% gap · ~{sg?.required_effort_hrs ?? 20}h effort remaining
+                        {gap.toFixed(1)}% gap · ~{sg?.requiredEffortHrs ?? 20}h effort remaining
                       </p>
                     )}
                   </div>

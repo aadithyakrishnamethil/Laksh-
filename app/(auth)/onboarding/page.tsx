@@ -9,8 +9,9 @@ import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import type { GoalAnalysis } from '@/types'
-import { CBSE_SUBJECTS } from '@/lib/utils/constants'
+import { CBSE_SUBJECTS, COMPULSORY_SUBJECT, MAX_SUBJECTS } from '@/lib/utils/constants'
 import { saveOnboarding } from '@/lib/actions/onboarding'
+import { useSubjectsStore } from '@/stores/subjects-store'
 
 const CBSE_SUBJECT_OPTS = CBSE_SUBJECTS.map((s) => ({ id: s.id, name: s.name, icon: s.icon }))
 
@@ -21,18 +22,25 @@ export default function OnboardingPage() {
   const [step, setStep] = useState<Step>(1)
   const [fullName, setFullName] = useState('')
   const [examDate, setExamDate] = useState('2027-03-15')
-  const [selectedSubjects, setSelectedSubjects] = useState<string[]>(['phy', 'chem', 'math'])
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([COMPULSORY_SUBJECT, 'phy', 'chem', 'math'])
   const [targetPct, setTargetPct] = useState(90)
+  const setStoreSubjects = useSubjectsStore((s) => s.setSubjects)
   const [analyzing, setAnalyzing] = useState(false)
   const [analysis, setAnalysis] = useState<GoalAnalysis | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
 
   function toggleSubject(id: string) {
-    setSelectedSubjects((prev) =>
-      prev.includes(id) ? (prev.length > 1 ? prev.filter((s) => s !== id) : prev) : [...prev, id]
-    )
+    // English is compulsory — can't be toggled off.
+    if (id === COMPULSORY_SUBJECT) return
+    setSelectedSubjects((prev) => {
+      if (prev.includes(id)) return prev.length > 1 ? prev.filter((s) => s !== id) : prev
+      if (prev.length >= MAX_SUBJECTS) return prev // max reached
+      return [...prev, id]
+    })
   }
+
+  const maxReached = selectedSubjects.length >= MAX_SUBJECTS
 
   async function analyzeGoal() {
     setAnalyzing(true)
@@ -75,6 +83,8 @@ export default function OnboardingPage() {
     if (!analysis) return
     setSaving(true)
     setSaveError('')
+    // Persist the chosen subjects so Goals / Planner / Diagnostics reflect them.
+    setStoreSubjects(selectedSubjects)
     try {
       // Both success and the unauthenticated fallback resolve without throwing;
       // only real errors (DB constraints, network) reach the catch below.
@@ -201,38 +211,43 @@ export default function OnboardingPage() {
                 Your subjects
               </h1>
               <p className="text-[14px] text-[var(--text-secondary)] mb-8">
-                Step 2 of 3 — Select your CBSE Class 12 subjects
+                Step 2 of 3 — Pick up to {MAX_SUBJECTS} subjects · English is compulsory
               </p>
               <div className="grid grid-cols-2 gap-3 mb-8">
                 {CBSE_SUBJECT_OPTS.map((sub) => {
                   const selected = selectedSubjects.includes(sub.id)
+                  const locked = sub.id === COMPULSORY_SUBJECT
+                  const disabled = !selected && maxReached
                   return (
                     <button
                       key={sub.id}
                       onClick={() => toggleSubject(sub.id)}
+                      disabled={locked || disabled}
                       className={`flex items-center gap-3 p-4 rounded-[var(--radius-xl)] text-left transition-all duration-200 ${
                         selected
                           ? 'bg-blue-50 border-2 border-[var(--accent-blue)] dark:bg-blue-950/30'
                           : 'bg-[var(--bg-subtle)] border-2 border-transparent hover:border-[var(--border-subtle)]'
-                      }`}
+                      } ${disabled ? 'opacity-40 cursor-not-allowed' : ''} ${locked ? 'cursor-default' : ''}`}
                     >
                       <span className="text-[22px]">{sub.icon}</span>
                       <div>
                         <div className={`text-[14px] font-medium ${selected ? 'text-[var(--accent-blue)]' : 'text-[var(--text-primary)]'}`}>
                           {sub.name}
                         </div>
-                        {selected && (
+                        {locked ? (
+                          <div className="text-[11px] text-[var(--text-secondary)] mt-0.5">Compulsory</div>
+                        ) : selected ? (
                           <div className="w-4 h-4 rounded-full bg-[var(--accent-blue)] flex items-center justify-center mt-1">
                             <Check className="w-2.5 h-2.5 text-white" />
                           </div>
-                        )}
+                        ) : null}
                       </div>
                     </button>
                   )
                 })}
               </div>
               <p className="text-[12px] text-[var(--text-secondary)] mb-6 text-center">
-                {selectedSubjects.length} subject{selectedSubjects.length !== 1 ? 's' : ''} selected
+                {selectedSubjects.length} of {MAX_SUBJECTS} subjects selected
               </p>
               <div className="flex gap-3">
                 <Button variant="secondary" size="lg" onClick={() => setStep(1)} className="flex-1">
