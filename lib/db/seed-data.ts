@@ -10,7 +10,7 @@ export const SEED_STUDENT = {
   avatar_url: null,
   board: 'CBSE',
   class: '12',
-  target_exam_date: '2025-03-15',
+  target_exam_date: '2027-03-15',
   theme_pref: 'system' as const,
   created_at: subDays(today, 45).toISOString(),
 }

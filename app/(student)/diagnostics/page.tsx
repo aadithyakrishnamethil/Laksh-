@@ -1,14 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Brain, CheckCircle2, XCircle, ChevronRight, Zap, BarChart3 } from 'lucide-react'
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer } from 'recharts'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { SEED_MASTERY, SEED_SUBJECT_STATS } from '@/lib/db/seed-data'
-import { CBSE_SUBJECTS } from '@/lib/utils/constants'
+import { useSubjectsStore } from '@/stores/subjects-store'
+import { getSubjectChapters, getSubjectStat, getSubjectMeta, subjectsInOrder } from '@/lib/db/subject-data'
 
 type Screen = 'overview' | 'quiz' | 'results'
 
@@ -65,21 +65,37 @@ const MOCK_QUESTIONS = [
   },
 ]
 
-const MASTERY_SUMMARY = SEED_SUBJECT_STATS.map((s) => ({
-  subject: s.subject.slice(0, 4),
-  mastery: s.mastery,
-  target: s.target,
-}))
-
 export default function DiagnosticsPage() {
+  const selectedSubjectIds = useSubjectsStore((s) => s.selectedSubjectIds)
   const [screen, setScreen] = useState<Screen>('overview')
   const [current, setCurrent] = useState(0)
   const [answers, setAnswers] = useState<Record<string, number | null>>({})
   const [selected, setSelected] = useState<number | null>(null)
   const [revealed, setRevealed] = useState(false)
 
-  const q = MOCK_QUESTIONS[current]
-  const totalQ = MOCK_QUESTIONS.length
+  // Quiz questions limited to the student's subjects (fall back to the full bank
+  // if none of the selected subjects have questions in the demo bank).
+  const questions = useMemo(() => {
+    const filtered = MOCK_QUESTIONS.filter((q) => selectedSubjectIds.includes(q.subjectId))
+    return filtered.length > 0 ? filtered : MOCK_QUESTIONS
+  }, [selectedSubjectIds])
+
+  // Mastery map derived from the selected subjects + their chapters.
+  const masterySummary = useMemo(
+    () =>
+      subjectsInOrder(selectedSubjectIds).map((s) => {
+        const stat = getSubjectStat(s.id)
+        return { subject: s.name.slice(0, 4), mastery: stat?.mastery ?? 50, target: stat?.target ?? 90 }
+      }),
+    [selectedSubjectIds]
+  )
+  const chapterMastery = useMemo(
+    () => selectedSubjectIds.flatMap((id) => getSubjectChapters(id)),
+    [selectedSubjectIds]
+  )
+
+  const q = questions[Math.min(current, questions.length - 1)]
+  const totalQ = questions.length
   const progress = ((current) / totalQ) * 100
 
   function selectOption(idx: number) {
@@ -104,7 +120,7 @@ export default function DiagnosticsPage() {
   }
 
   const correctCount = Object.entries(answers).filter(([id, ans]) => {
-    const q = MOCK_QUESTIONS.find((q) => q.id === id)
+    const q = questions.find((q) => q.id === id)
     return q && ans === q.answer
   }).length
 
@@ -137,11 +153,8 @@ export default function DiagnosticsPage() {
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <Badge variant={
-                    CBSE_SUBJECTS.find((s) => s.id === q.subjectId)?.id === 'phy' ? 'blue' :
-                    CBSE_SUBJECTS.find((s) => s.id === q.subjectId)?.id === 'math' ? 'orange' : 'green'
-                  }>
-                    {CBSE_SUBJECTS.find((s) => s.id === q.subjectId)?.name}
+                  <Badge variant={q.subjectId === 'phy' ? 'blue' : q.subjectId === 'math' ? 'orange' : 'green'}>
+                    {getSubjectMeta(q.subjectId)?.name ?? q.subjectId}
                   </Badge>
                   <Badge variant="default">Difficulty: {q.difficulty}/5</Badge>
                 </div>
@@ -217,7 +230,7 @@ export default function DiagnosticsPage() {
             <CardHeader><CardTitle>Answer Review</CardTitle></CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {MOCK_QUESTIONS.map((q, i) => {
+                {questions.map((q, i) => {
                   const ans = answers[q.id]
                   const correct = ans === q.answer
                   return (
@@ -276,7 +289,7 @@ export default function DiagnosticsPage() {
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={220}>
-                <RadarChart data={MASTERY_SUMMARY} margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
+                <RadarChart data={masterySummary} margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
                   <PolarGrid stroke="var(--border-subtle)" />
                   <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} />
                   <Radar name="Mastery" dataKey="mastery" stroke="#2A7AFE" fill="#2A7AFE" fillOpacity={0.2} strokeWidth={2} animationBegin={0} animationDuration={800} />
@@ -303,16 +316,14 @@ export default function DiagnosticsPage() {
             <CardHeader><CardTitle>Chapter Mastery</CardTitle></CardHeader>
             <CardContent>
               <div className="space-y-2.5 max-h-[280px] overflow-y-auto pr-1">
-                {SEED_MASTERY.map((m) => {
-                  const [subId, idx] = m.chapter_id.split('-')
-                  const sub = CBSE_SUBJECTS.find((s) => s.id === subId)
-                  const chapterName = sub?.chapters[parseInt(idx) - 1]?.name ?? m.chapter_id
+                {chapterMastery.map((m) => {
+                  const sub = getSubjectMeta(m.subject_id)
                   return (
                     <div key={m.chapter_id} className="flex items-center gap-3">
                       <span className="text-[14px] shrink-0">{sub?.icon}</span>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-[12px] text-[var(--text-primary)] truncate">{chapterName}</span>
+                          <span className="text-[12px] text-[var(--text-primary)] truncate">{m.name}</span>
                           <span className="text-[12px] font-medium text-[var(--text-primary)] ml-2 shrink-0">{m.mastery_pct}%</span>
                         </div>
                         <div className="h-1.5 bg-[var(--bg-subtle)] rounded-full overflow-hidden">

@@ -446,6 +446,8 @@ export interface StudentContext {
   streak: Streak | null
   recentTasks: PlanTask[]
   burnoutLevel: BurnoutLevel
+  /** Names of the subjects the student is studying (drives coach context). */
+  subjects?: string[]
 }
 
 export interface CohortContext {

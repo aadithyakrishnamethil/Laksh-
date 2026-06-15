@@ -10,18 +10,59 @@ import { CBSE_SUBJECTS } from '@/lib/utils/constants'
 
 type Screen = 'browse' | 'quiz' | 'results'
 
-const PRACTICE_PAPERS = [
-  { id: 'pp-1', subjectId: 'phy', name: 'Physics — Optics & Waves', chapters: ['Ray Optics', 'Wave Optics'], questions: 15, duration: 30 },
-  { id: 'pp-2', subjectId: 'math', name: 'Mathematics — Calculus', chapters: ['Limits', 'Derivatives', 'Integrals'], questions: 12, duration: 25 },
-  { id: 'pp-3', subjectId: 'chem', name: 'Chemistry — Organic', chapters: ['Haloalkanes', 'Aldehydes', 'Amines'], questions: 10, duration: 20 },
-  { id: 'pp-4', subjectId: 'bio', name: 'Biology — Genetics', chapters: ['Heredity', 'Molecular Basis'], questions: 15, duration: 30 },
-  { id: 'pp-5', subjectId: 'phy', name: 'Physics — Electrostatics', chapters: ['Electric Field', 'Capacitors'], questions: 10, duration: 20 },
-]
+interface Question {
+  id: string
+  stem: string
+  options: string[]
+  answer: number
+  explanation: string
+}
 
-const QUICK_QUESTIONS = [
-  { id: 'q1', stem: 'A ray of light passes from glass (n=1.5) to air. The critical angle is:', options: ['41.8°', '33.4°', '48.2°', '30.0°'], answer: 0, explanation: 'sin(c) = 1/n = 1/1.5, so c = sin⁻¹(0.667) ≈ 41.8°' },
-  { id: 'q2', stem: 'The derivative of ln(sin x) with respect to x is:', options: ['cos x', 'cot x', 'tan x', '1/sin x'], answer: 1, explanation: 'd/dx[ln(sin x)] = cos x / sin x = cot x' },
-  { id: 'q3', stem: 'Which of the following is an aldose sugar?', options: ['Fructose', 'Glucose', 'Sucrose', 'Galactose'], answer: 1, explanation: 'Glucose is an aldose sugar as it has an aldehyde group at C-1.' },
+// Each paper has its own subject-specific question set, keyed by paper id.
+const QUESTION_BANK: Record<string, Question[]> = {
+  // Physics — Optics & Waves
+  'pp-1': [
+    { id: 'pp1-q1', stem: 'A ray of light passes from glass (n=1.5) to air. The critical angle is:', options: ['41.8°', '33.4°', '48.2°', '30.0°'], answer: 0, explanation: 'sin(c) = 1/n = 1/1.5, so c = sin⁻¹(0.667) ≈ 41.8°' },
+    { id: 'pp1-q2', stem: 'In Young’s double-slit experiment, the fringe width β is given by:', options: ['λd/D', 'λD/d', 'dD/λ', 'λ/dD'], answer: 1, explanation: 'Fringe width β = λD/d, where D is the slit-to-screen distance and d the slit separation.' },
+    { id: 'pp1-q3', stem: 'A convex lens has focal length 20 cm. Its power in dioptres is:', options: ['+2 D', '+5 D', '+0.5 D', '−5 D'], answer: 1, explanation: 'Power P = 1/f (in metres) = 1/0.20 = +5 D.' },
+    { id: 'pp1-q4', stem: 'Light reflected at Brewster’s angle is:', options: ['Unpolarised', 'Completely plane-polarised', 'Circularly polarised', 'Partially polarised'], answer: 1, explanation: 'At Brewster’s angle the reflected ray is completely plane-polarised, perpendicular to the plane of incidence.' },
+  ],
+  // Mathematics — Calculus
+  'pp-2': [
+    { id: 'pp2-q1', stem: 'The derivative of ln(sin x) with respect to x is:', options: ['cos x', 'cot x', 'tan x', '1/sin x'], answer: 1, explanation: 'd/dx[ln(sin x)] = cos x / sin x = cot x' },
+    { id: 'pp2-q2', stem: 'The value of lim(x→0) (sin x)/x is:', options: ['0', '1', '∞', 'Undefined'], answer: 1, explanation: 'This is a standard limit: lim(x→0) sin x / x = 1.' },
+    { id: 'pp2-q3', stem: '∫ (1/x) dx equals:', options: ['x²/2 + C', 'ln|x| + C', '−1/x² + C', 'e^x + C'], answer: 1, explanation: 'The integral of 1/x is the natural logarithm: ln|x| + C.' },
+    { id: 'pp2-q4', stem: 'The derivative of e^(2x) with respect to x is:', options: ['e^(2x)', '2e^(2x)', 'e^(2x)/2', '2x·e^(2x)'], answer: 1, explanation: 'By the chain rule, d/dx[e^(2x)] = 2·e^(2x).' },
+  ],
+  // Chemistry — Organic
+  'pp-3': [
+    { id: 'pp3-q1', stem: 'Which compound gives a positive Tollens’ (silver mirror) test?', options: ['Acetone', 'Acetaldehyde', 'Benzene', 'Ethanol'], answer: 1, explanation: 'Aldehydes such as acetaldehyde reduce Tollens’ reagent; ketones like acetone do not.' },
+    { id: 'pp3-q2', stem: 'SN1 substitution reactions are favoured most by:', options: ['Primary haloalkanes', 'Tertiary haloalkanes', 'Methyl halides', 'Vinyl halides'], answer: 1, explanation: 'SN1 proceeds via a carbocation; tertiary haloalkanes form the most stable carbocation, so they react fastest.' },
+    { id: 'pp3-q3', stem: 'In aqueous solution, the correct order of basicity is:', options: ['NH₃ > CH₃NH₂', 'CH₃NH₂ > NH₃', '(CH₃)₃N > CH₃NH₂', 'Aniline > CH₃NH₂'], answer: 1, explanation: 'The +I effect of the methyl group makes methylamine more basic than ammonia in water.' },
+    { id: 'pp3-q4', stem: 'Haloalkanes on reaction with aqueous KOH primarily give:', options: ['Alkenes', 'Alcohols', 'Ethers', 'Aldehydes'], answer: 1, explanation: 'Aqueous KOH favours nucleophilic substitution, giving alcohols (alcoholic KOH would favour elimination to alkenes).' },
+  ],
+  // Biology — Genetics
+  'pp-4': [
+    { id: 'pp4-q1', stem: 'Mendel’s Law of Segregation states that:', options: ['Genes assort independently', 'Allele pairs separate during gamete formation', 'Traits blend in offspring', 'Acquired traits are inherited'], answer: 1, explanation: 'During gamete formation the two alleles of a gene segregate, so each gamete carries only one allele.' },
+    { id: 'pp4-q2', stem: 'The sugar present in a DNA nucleotide is:', options: ['Ribose', 'Deoxyribose', 'Glucose', 'Fructose'], answer: 1, explanation: 'DNA contains 2′-deoxyribose, which lacks the –OH at the 2′ position present in RNA’s ribose.' },
+    { id: 'pp4-q3', stem: 'The genetic code is said to be “degenerate” because:', options: ['One codon codes many amino acids', 'Several codons can code the same amino acid', 'Codes differ across species', 'It has no start codon'], answer: 1, explanation: 'Degeneracy means most amino acids are specified by more than one codon.' },
+    { id: 'pp4-q4', stem: 'A normal human somatic (body) cell contains how many chromosomes?', options: ['23', '46', '44', '48'], answer: 1, explanation: 'Human somatic cells are diploid with 46 chromosomes (23 pairs).' },
+  ],
+  // Physics — Electrostatics
+  'pp-5': [
+    { id: 'pp5-q1', stem: 'The electrostatic force between two point charges varies with distance r as:', options: ['1/r', '1/r²', 'r', 'r²'], answer: 1, explanation: 'Coulomb’s law: F ∝ 1/r², an inverse-square law.' },
+    { id: 'pp5-q2', stem: 'The capacitance of a parallel-plate capacitor is given by:', options: ['ε₀d/A', 'ε₀A/d', 'A/(ε₀d)', 'ε₀Ad'], answer: 1, explanation: 'C = ε₀A/d for a parallel-plate capacitor (in vacuum), where A is plate area and d the separation.' },
+    { id: 'pp5-q3', stem: 'The electric field inside a charged conductor in electrostatic equilibrium is:', options: ['Maximum', 'Zero', 'Equal to the surface field', 'Infinite'], answer: 1, explanation: 'Charges reside on the surface, so the net electric field inside a conductor is zero at equilibrium.' },
+    { id: 'pp5-q4', stem: 'The energy stored in a capacitor of capacitance C charged to voltage V is:', options: ['CV', '½CV²', 'CV²', '½CV'], answer: 1, explanation: 'Energy U = ½CV² (equivalently ½QV or Q²/2C).' },
+  ],
+}
+
+const PRACTICE_PAPERS = [
+  { id: 'pp-1', subjectId: 'phy', name: 'Physics — Optics & Waves', chapters: ['Ray Optics', 'Wave Optics'], questions: QUESTION_BANK['pp-1'].length, duration: 30 },
+  { id: 'pp-2', subjectId: 'math', name: 'Mathematics — Calculus', chapters: ['Limits', 'Derivatives', 'Integrals'], questions: QUESTION_BANK['pp-2'].length, duration: 25 },
+  { id: 'pp-3', subjectId: 'chem', name: 'Chemistry — Organic', chapters: ['Haloalkanes', 'Aldehydes', 'Amines'], questions: QUESTION_BANK['pp-3'].length, duration: 20 },
+  { id: 'pp-4', subjectId: 'bio', name: 'Biology — Genetics', chapters: ['Heredity', 'Molecular Basis'], questions: QUESTION_BANK['pp-4'].length, duration: 30 },
+  { id: 'pp-5', subjectId: 'phy', name: 'Physics — Electrostatics', chapters: ['Electric Field', 'Capacitors'], questions: QUESTION_BANK['pp-5'].length, duration: 20 },
 ]
 
 export default function PracticePage() {
@@ -33,6 +74,9 @@ export default function PracticePage() {
   const [revealed, setRevealed] = useState(false)
   const [answers, setAnswers] = useState<Record<string, number | null>>({})
   const [timeLeft, setTimeLeft] = useState(0)
+
+  // Questions for the currently active paper (subject-specific).
+  const questions = activePaper ? QUESTION_BANK[activePaper.id] ?? [] : []
 
   useEffect(() => {
     if (screen !== 'quiz' || timeLeft <= 0) return
@@ -51,10 +95,10 @@ export default function PracticePage() {
   }
 
   function next() {
-    if (qIdx + 1 >= QUICK_QUESTIONS.length) {
+    if (qIdx + 1 >= questions.length) {
       setScreen('results')
     } else {
-      setAnswers((a) => ({ ...a, [QUICK_QUESTIONS[qIdx].id]: selected }))
+      setAnswers((a) => ({ ...a, [questions[qIdx].id]: selected }))
       setQIdx((i) => i + 1)
       setSelected(null)
       setRevealed(false)
@@ -62,7 +106,7 @@ export default function PracticePage() {
   }
 
   const correctCount = Object.entries(answers).filter(([id, ans]) => {
-    const q = QUICK_QUESTIONS.find((q) => q.id === id)
+    const q = questions.find((q) => q.id === id)
     return q && ans === q.answer
   }).length
 
@@ -71,13 +115,13 @@ export default function PracticePage() {
   const filtered = filterSub ? PRACTICE_PAPERS.filter((p) => p.subjectId === filterSub) : PRACTICE_PAPERS
 
   if (screen === 'quiz' && activePaper) {
-    const q = QUICK_QUESTIONS[qIdx]
+    const q = questions[qIdx]
     return (
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-[18px] font-bold text-[var(--text-primary)]">{activePaper.name}</h2>
-            <p className="text-[13px] text-[var(--text-secondary)]">Q{qIdx + 1} of {QUICK_QUESTIONS.length}</p>
+            <p className="text-[13px] text-[var(--text-secondary)]">Q{qIdx + 1} of {questions.length}</p>
           </div>
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full font-mono text-[14px] font-bold ${timeLeft < 60 ? 'bg-red-50 text-[var(--accent-red)]' : 'bg-[var(--bg-subtle)] text-[var(--text-primary)]'}`}>
             <Timer className="w-4 h-4" />
@@ -85,7 +129,7 @@ export default function PracticePage() {
           </div>
         </div>
         <div className="h-1.5 bg-[var(--bg-subtle)] rounded-full overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-[#2A7AFE] to-[#53C8FF] rounded-full transition-all" style={{ width: `${(qIdx / QUICK_QUESTIONS.length) * 100}%` }} />
+          <div className="h-full bg-gradient-to-r from-[#2A7AFE] to-[#53C8FF] rounded-full transition-all" style={{ width: `${(qIdx / questions.length) * 100}%` }} />
         </div>
         <AnimatePresence mode="wait">
           <motion.div key={q.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.25 }}>
@@ -131,7 +175,7 @@ export default function PracticePage() {
             </Button>
           ) : (
             <Button variant="primary" className="flex-1" onClick={next}>
-              {qIdx + 1 >= QUICK_QUESTIONS.length ? 'See Results' : 'Next'} <ChevronRight className="w-4 h-4 ml-1" />
+              {qIdx + 1 >= questions.length ? 'See Results' : 'Next'} <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
           )}
         </div>
@@ -140,12 +184,12 @@ export default function PracticePage() {
   }
 
   if (screen === 'results') {
-    const pct = Math.round((correctCount / QUICK_QUESTIONS.length) * 100)
+    const pct = Math.round((correctCount / questions.length) * 100)
     return (
       <div className="max-w-2xl mx-auto space-y-6">
         <Card className="text-center py-10">
           <div className="text-[60px] mb-4">{pct >= 70 ? '🎉' : '📚'}</div>
-          <h2 className="text-[24px] font-bold text-[var(--text-primary)] mb-2">{correctCount}/{QUICK_QUESTIONS.length} correct</h2>
+          <h2 className="text-[24px] font-bold text-[var(--text-primary)] mb-2">{correctCount}/{questions.length} correct</h2>
           <p className="text-[var(--text-secondary)] mb-6">Score: {pct}%</p>
           <div className="flex justify-center gap-3">
             <Button variant="primary" onClick={() => setScreen('browse')}>Browse More Papers</Button>

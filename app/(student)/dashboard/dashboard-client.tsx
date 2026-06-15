@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import {
@@ -14,6 +15,9 @@ import { ProgressRing } from '@/components/ui/progress-ring'
 import { ScoreLineChart } from '@/components/charts/score-line-chart'
 import { SubjectRadar } from '@/components/charts/subject-radar'
 import type { DashboardData } from '@/lib/db/queries'
+import { useSubjectsStore } from '@/stores/subjects-store'
+import { useGoalStore } from '@/stores/goal-store'
+import { getSubjectStat } from '@/lib/db/subject-data'
 import { format } from 'date-fns'
 
 interface DashboardClientProps {
@@ -32,8 +36,23 @@ export function DashboardClient({ data }: DashboardClientProps) {
   const today = new Date()
   const {
     student, goal, streak, xp, level, predictions,
-    subjectStats, weeklyChart, planTasks, burnout, recentActivity,
+    weeklyChart, planTasks, burnout, recentActivity,
   } = data
+
+  // Subject strengths follow the student's chosen subjects.
+  const selectedSubjectIds = useSubjectsStore((s) => s.selectedSubjectIds)
+  const goalTargetPct = useGoalStore((s) => s.targetPct)
+  const displayStats = useMemo(
+    () =>
+      selectedSubjectIds
+        .map((id) => getSubjectStat(id, goalTargetPct))
+        .filter((s): s is NonNullable<typeof s> => Boolean(s)),
+    [selectedSubjectIds, goalTargetPct]
+  )
+  const radarData = useMemo(
+    () => displayStats.map((s) => ({ subject: s.subject.slice(0, 4), mastery: s.mastery, target: s.target })),
+    [displayStats]
+  )
 
   const latestPrediction = predictions[predictions.length - 1]
   const todayStr = format(today, 'yyyy-MM-dd')
@@ -86,7 +105,7 @@ export function DashboardClient({ data }: DashboardClientProps) {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Target className="w-4 h-4 text-[var(--accent-blue)]" />
-                <CardTitle>Target: {goal.target_overall_pct}% in CBSE Class 12</CardTitle>
+                <CardTitle>Target: {goalTargetPct}% in CBSE Class 12</CardTitle>
               </div>
               <Link href="/predictor" className="text-[13px] font-medium text-[var(--accent-blue)] hover:opacity-70 transition-opacity flex items-center gap-1">
                 View Predictor <ArrowRight className="w-3 h-3" />
@@ -113,7 +132,7 @@ export function DashboardClient({ data }: DashboardClientProps) {
                     <span className="text-[12px] text-[var(--text-secondary)]">{latestPrediction.confidence_pct}% confidence</span>
                   </div>
                   <div className="space-y-1.5">
-                    {subjectStats.slice(0, 3).map((s) => (
+                    {displayStats.slice(0, 3).map((s) => (
                       <div key={s.subject} className="flex items-center gap-2">
                         <span className="text-[12px] text-[var(--text-secondary)] w-16 shrink-0">{s.subject}</span>
                         <div className="flex-1 h-1.5 bg-[var(--bg-subtle)] rounded-full overflow-hidden">
@@ -288,7 +307,7 @@ export function DashboardClient({ data }: DashboardClientProps) {
               </Link>
             </CardHeader>
             <CardContent>
-              <SubjectRadar data={subjectStats} height={200} />
+              <SubjectRadar data={radarData} height={200} />
             </CardContent>
           </Card>
         </motion.div>

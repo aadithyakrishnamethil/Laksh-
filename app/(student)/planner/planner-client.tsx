@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useMemo, useState, useTransition } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CheckCircle2, Circle, RefreshCw, Calendar, List, ChevronLeft, ChevronRight } from 'lucide-react'
 import { format, addDays, startOfWeek, isSameDay, parseISO } from 'date-fns'
@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { CBSE_SUBJECTS } from '@/lib/utils/constants'
 import { toggleTask, rescheduleMissedTasks } from '@/lib/actions/task'
+import { useSubjectsStore } from '@/stores/subjects-store'
+import { getPlanTasksForSubjects } from '@/lib/db/subject-data'
 import type { SEED_PLAN_TASKS } from '@/lib/db/seed-data'
 
 type Task = typeof SEED_PLAN_TASKS[number]
@@ -73,8 +75,19 @@ function TaskCard({ task, onToggle }: { task: Task; onToggle: (id: string, statu
 }
 
 export function PlannerClient({ initialTasks, planId }: PlannerClientProps) {
+  const selectedSubjectIds = useSubjectsStore((s) => s.selectedSubjectIds)
   const [view, setView] = useState<ViewMode>('list')
-  const [tasks, setTasks] = useState(initialTasks)
+
+  // Tasks scoped to the student's subjects. With a real saved plan we filter the
+  // stored tasks; in demo mode we generate a plan from the selected subjects.
+  const subjectTasks = useMemo<Task[]>(() => {
+    if (planId) return initialTasks.filter((t) => selectedSubjectIds.includes(t.subject_id))
+    return getPlanTasksForSubjects(selectedSubjectIds) as Task[]
+  }, [planId, initialTasks, selectedSubjectIds])
+
+  const [tasks, setTasks] = useState<Task[]>(subjectTasks)
+  // Re-sync when the subject selection (and thus the derived plan) changes.
+  useEffect(() => setTasks(subjectTasks), [subjectTasks])
   const [weekOffset, setWeekOffset] = useState(0)
   const [selectedDay, setSelectedDay] = useState<Date>(new Date())
   const [isPending, startTransition] = useTransition()
